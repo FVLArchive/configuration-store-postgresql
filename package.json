@@ -8,10 +8,20 @@
 		"compile": "tsc",
 		"copySql": "cp -r ./src/sql ./dist/",
 		"build": "npm run compile && npm run copySql",
-		"test": "node ./dist/test.js"
+		"test": "node ./dist/test.js",
+		"prepublish": "npm run build",
+		"docs": "./node_modules/.bin/typedoc --name \"PostgreSQL Configuration Store\" --theme minimal --out ./docs/ --target ES2017 --module commonjs --exclude \"**/{dist,docs,node_modules}/**/*\" ./src"
 	},
-	"author": "",
-	"license": "ISC",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/FairVenturesLab/configuration-store-postgresql.git"
+	},
+	"author": "FairVentures Lab",
+	"license": "Apache-2.0",
+	"bugs": {
+		"url": "https://github.com/FairVenturesLab/configuration-store-postgresql/issues"
+	},
+	"homepage": "https://github.com/FairVenturesLab/configuration-store-postgresql#readme",
 	"dependencies": {
 		"@fvlab/configurationstore": "^1.0.6",
 		"fs-extra": "^8.0.1",
@@ -22,6 +32,7 @@
 		"@types/fs-extra": "^7.0.0",
 		"@types/pg": "^7.4.14",
 		"@types/pg-format": "^1.0.0",
+		"typedoc": "^0.14.2",
 		"typescript": "^3.5.1"
 	}
 }
