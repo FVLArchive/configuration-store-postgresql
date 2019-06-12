@@ -2,7 +2,7 @@
 
 Simple application settings or document storage using PostgreSQL. Global configurations will be stored under `/internal/global/` and user-specific configurations will be stored under `/internal/user/<userId>`. The paths can be configured by passing optional arguments to the constructor.
 
-~~[NPM Package](https://www.npmjs.com/package/@fvlab/comingSoon)~~ Package not published yet.
+[NPM Package](https://www.npmjs.com/package/@fvlab/postgrsqlconfigurationstore)
 
 # Usage
 
