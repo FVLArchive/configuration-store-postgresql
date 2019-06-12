@@ -9,7 +9,7 @@
 		"copySql": "cp -r ./src/sql ./dist/",
 		"build": "npm run compile && npm run copySql",
 		"test": "node ./dist/test.js",
-		"prepublish": "npm run build",
+		"prepublishOnly": "npm run build",
 		"docs": "./node_modules/.bin/typedoc --name \"PostgreSQL Configuration Store\" --theme minimal --out ./docs/ --target ES2017 --module commonjs --exclude \"**/{dist,docs,node_modules}/**/*\" ./src"
 	},
 	"repository": {
