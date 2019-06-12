@@ -1,0 +1,27 @@
+{
+	"name": "configuration-store-postgrsql",
+	"version": "1.0.0",
+	"description": "Configuration Store wrapper for PostgreSQL.",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"compile": "tsc",
+		"copySql": "cp -r ./src/sql ./dist/",
+		"build": "npm run compile && npm run copySql",
+		"test": "node ./dist/test.js"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@fvlab/configurationstore": "^1.0.6",
+		"fs-extra": "^8.0.1",
+		"pg": "^7.11.0",
+		"pg-format": "^1.0.4"
+	},
+	"devDependencies": {
+		"@types/fs-extra": "^7.0.0",
+		"@types/pg": "^7.4.14",
+		"@types/pg-format": "^1.0.0",
+		"typescript": "^3.5.1"
+	}
+}

@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"module": "commonjs",
+		"strict": true,
+		"noImplicitReturns": false,
+		"outDir": "dist",
+		"sourceMap": true,
+		"target": "es2017",
+		"declaration": true,
+		"strictNullChecks": false,
+		"resolveJsonModule": true
+		// "allowSyntheticDefaultImports": true,
+		// "skipLibCheck": true
+	},
+	"compileOnSave": true
+}
