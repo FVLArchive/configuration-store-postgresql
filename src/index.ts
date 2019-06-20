@@ -8,7 +8,7 @@ import { readFile } from "fs-extra";
  *
  * @export
  * @interface PostgreSqlConfiguration
- * @extends {ClientConfig}
+ * @extends {PoolConfig}
  */
 export interface PostgreSqlConfiguration extends PoolConfig {
   default_database?: string;
@@ -42,7 +42,8 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
    * Initiate PostgrSqlConfigurationStore.
    * If the database does not exist, it creates a new one.
    * @param {(PostgreSqlConfiguration)} [config] Configuration object or URL or ENV variables
-   * @memberof PostgrSqlConfigurationStore
+   * @returns {Promise<this>}
+   * @memberof PostgreSqlConfigurationStore
    */
   public async init(config?: PostgreSqlConfiguration): Promise<this> {
     if (!config) {
@@ -166,10 +167,12 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
   }
 
   /**
-   * Connect to the PostgreSQL database.  If a connection already exists, close it and open a new one.
+   * Connect to the PostgreSQL database. If a connection already exists, close it and open a new one.
    *
    * @private
-   * @returns {Promise<Client>}
+   * @param {PostgreSqlConfiguration} [config]
+   * @param {boolean} [usePool=true] Uses a global connection pool rather than a client
+   * @returns {(Promise<PoolClient | Client>)}
    * @memberof PostgreSqlConfigurationStore
    */
   private async connect(
@@ -191,6 +194,7 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
    * Close the connection to the PostgreSQL database.
    *
    * @private
+   * @param {(PoolClient | Client)} client
    * @returns {Promise<void>}
    * @memberof PostgreSqlConfigurationStore
    */
@@ -204,7 +208,7 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
    *
    * @private
    * @template R Return value of the wrapped function.
-   * @param {() => Promise<R>} func Function to wrap.
+   * @param {((client?: PoolClient | Client) => Promise<R>)} func Function to wrap.
    * @param {PostgreSqlConfiguration} [config] Connection configuration, if it is different than the class configuration.
    * @returns {Promise<R>} The result of the wrapped function.
    * @memberof PostgreSqlConfigurationStore
