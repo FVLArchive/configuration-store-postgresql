@@ -1,5 +1,5 @@
 import { BaseConfigurationStore } from '@fvlab/configurationstore';
-import { Client, ClientConfig } from 'pg';
+import { PoolClient, Pool, PoolConfig, Client } from 'pg';
 import * as format from 'pg-format';
 import { readFile } from 'fs-extra';
 
@@ -10,7 +10,7 @@ import { readFile } from 'fs-extra';
  * @interface PostgreSqlConfiguration
  * @extends {ClientConfig}
  */
-export interface PostgreSqlConfiguration extends ClientConfig {
+export interface PostgreSqlConfiguration extends PoolConfig {
 	default_database?: string;
 	tableName?: string;
 }
@@ -29,11 +29,11 @@ interface PostgresSqlConfigurationEntry<T> {
  * @template T
  */
 class PostgresSqlConfigurationEntryTemplate<T> implements PostgresSqlConfigurationEntry<T> {
-	constructor(public config_path: string, public data: T, public id?: string) {}
+	constructor(public config_path: string, public data: T, public id?: string) { }
 }
 
 export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
-	private client!: Client;
+	private pool!: Pool;
 	private tableName: string = 'config';
 	private config!: PostgreSqlConfiguration;
 
@@ -113,7 +113,7 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	 * @memberof PostgreSqlConfigurationStore
 	 */
 	protected async getData<T>(settingsPath: string, defaultValue?: T | undefined): Promise<T | undefined> {
-		return this.connectionWrapper(async () => {
+		return this.connectionWrapper(async (client) => {
 			let sql = `SELECT * FROM ${this.tableName}`;
 			const sqlParam = [];
 			if (settingsPath) {
@@ -127,7 +127,7 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 			console.log('getData', 'settingsPath:', settingsPath);
 			console.log('getDate SQL:', sql);
 
-			const queryResult = await this.client.query(sql, sqlParam);
+			const queryResult = await client.query(sql, sqlParam);
 
 			if (queryResult.rowCount) {
 				const queryResultEntry: PostgresSqlConfigurationEntry<T> = queryResult.rows[0];
@@ -167,24 +167,16 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	 * @returns {Promise<Client>}
 	 * @memberof PostgreSqlConfigurationStore
 	 */
-	private async connect(config?: PostgreSqlConfiguration): Promise<Client> {
-		if (this.client) {
-			try {
-				await this.disconnect();
-				console.warn('Client already connected, connection closed.');
-			} catch (e) {
-				console.error((<Error>e).stack);
-			}
-		}
-
+	private async connect(config?: PostgreSqlConfiguration, usePool: boolean = true): Promise<PoolClient | Client> {
+		console.log("usePool", usePool);
 		const sqlConfig = config || this.config;
-		this.client = new Client(sqlConfig);
-		try {
-			await this.client.connect();
-		} catch (e) {
-			console.error('A connection error occurred:', e.stack);
+		if (!this.pool && usePool) {
+			this.pool = new Pool(sqlConfig);
 		}
-		return this.client;
+		const client = !usePool ? new Client(sqlConfig) : await this.pool.connect();
+		if (!usePool) client.connect();
+
+		return client;
 	}
 
 	/**
@@ -194,9 +186,9 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	 * @returns {Promise<void>}
 	 * @memberof PostgreSqlConfigurationStore
 	 */
-	private async disconnect(): Promise<void> {
-		if (this.client) await this.client.end();
-		this.client = null;
+	private async disconnect(client: PoolClient | Client): Promise<void> {
+		if (client && 'release' in client) await client.release();
+		else if (client && 'end' in client) await client.end();
 	}
 
 	/**
@@ -210,12 +202,12 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	 * @memberof PostgreSqlConfigurationStore
 	 */
 	private async connectionWrapper<R>(
-		func: (client?: Client) => Promise<R>,
+		func: (client?: PoolClient | Client) => Promise<R>,
 		config?: PostgreSqlConfiguration
 	): Promise<R> {
-		const client = await this.connect(config);
+		const client = await this.connect(config, !config);
 		const returnValue = await func(client);
-		await this.disconnect();
+		await this.disconnect(client);
 		return returnValue;
 	}
 
@@ -228,11 +220,11 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	async createDatabase(config?: PostgreSqlConfiguration) {
 		console.log('createDatabase');
 
-		await this.connectionWrapper(async () => {
+		await this.connectionWrapper(async (client) => {
 			const createDbQuery = format('CREATE DATABASE %I TEMPLATE template0;', this.config.database);
 			console.log('createDatabase', 'createDbQuery:', createDbQuery);
 			try {
-				await this.client.query(createDbQuery);
+				await client.query(createDbQuery);
 			} catch (e) {
 				console.warn('createDatabase', 'database creation failed:', e.message);
 			}
@@ -249,10 +241,10 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	async createTables(config?: PostgreSqlConfiguration) {
 		console.log('createTables');
 
-		await this.connectionWrapper(async () => {
+		await this.connectionWrapper(async (client) => {
 			const databaseQuery = (await readFile(`${__dirname}/sql/init_config.sql`)).toString();
 			console.log('createTables', 'databaseQuery:', databaseQuery);
-			await this.client.query(databaseQuery);
+			await client.query(databaseQuery);
 		}, config);
 	}
 }
