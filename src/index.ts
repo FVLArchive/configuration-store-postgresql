@@ -88,17 +88,23 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	protected async setData<T>(settingsPath: string, value: T): Promise<T> {
 		const template = new PostgresSqlConfigurationEntryTemplate(settingsPath, value);
 
-		return this.connectionWrapper(async () => {
+		return this.connectionWrapper(async (client) => {
+			const sqlFirstParam = "$1";
+			const sqlSecondParam = "CAST($2 AS json)";
+			const configPath = "config_path";
 			const sql = format(
-				`INSERT INTO %I (%s) VALUES %s;`,
+				`INSERT INTO %1$I (%2$s) VALUES %3$s ON CONFLICT ON CONSTRAINT %5$I DO UPDATE SET data = %4$s;`,
 				this.tableName,
-				['config_path', 'data'], // IDs aren't needed for inserts
-				[['$1', 'CAST($2 AS json)']] // Generate SQL params - The cast is required as there is no implicit cast from string to JSON
+				[configPath, 'data'], // IDs aren't needed for inserts
+				[[sqlFirstParam, sqlSecondParam]], // Generate SQL params - The cast is required as there is no implicit cast from string to JSON
+				sqlSecondParam,
+				'config_un'
 			);
 			const sqlParam = [template.config_path, JSON.stringify(template.data)];
 			console.log('setData', 'settingsPath:', settingsPath);
 			console.log('setData', 'SQL:', sql);
-			await this.client.query(sql, sqlParam);
+			console.log('setData', 'SQLPArams:', sqlParam);
+			await client.query(sql, sqlParam);
 			return value;
 		});
 	}
@@ -148,16 +154,7 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	 * @memberof PostgreSqlConfigurationStore
 	 */
 	protected async updateData<T>(settingsPath: string, value: T): Promise<T> {
-		const template = new PostgresSqlConfigurationEntryTemplate(settingsPath, value);
-
-		return this.connectionWrapper(async () => {
-			const sql = format(`UPDATE %I SET data = CAST($2 AS json) WHERE config_path = $1;`, this.tableName);
-			const sqlParam = [template.config_path, JSON.stringify(template.data)];
-			console.log('updateData', 'settingsPath:', settingsPath);
-			console.log('updateData', 'SQL:', sql);
-			await this.client.query(sql, sqlParam);
-			return value;
-		});
+		return this.setData(settingsPath, value);
 	}
 
 	/**
