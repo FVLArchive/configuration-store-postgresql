@@ -15,7 +15,7 @@ async function initConfig(): Promise<PostgreSqlConfigurationStore> {
 }
 
 const userId = new Date().toISOString();
-const userId2 = userId + "123";
+const userId2 = userId + '123';
 
 initConfig()
 	.then(async x => {
