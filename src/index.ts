@@ -11,10 +11,31 @@ import { readFile } from 'fs-extra';
  * @extends {PoolConfig}
  */
 export interface PostgreSqlConfiguration extends PoolConfig {
+	/**
+	 * Default database to use to connect to the PostgreSQL server to verify that the configuration table exists.
+	 *
+	 * @type {string}
+	 * @memberof PostgreSqlConfiguration
+	 */
 	default_database?: string;
+
+	/**
+	 * Table to use to store the configuration.
+	 *
+	 * @type {string}
+	 * @memberof PostgreSqlConfiguration
+	 */
 	tableName?: string;
 }
 
+/**
+ * Entry in the configuration table.
+ *
+ * Represents the structure of the table.
+ *
+ * @interface PostgresSqlConfigurationEntry
+ * @template T Type of the data that is contained in the entry.
+ */
 interface PostgresSqlConfigurationEntry<T> {
 	id?: string;
 	config_path: string;
@@ -32,6 +53,13 @@ class PostgresSqlConfigurationEntryTemplate<T> implements PostgresSqlConfigurati
 	constructor(public config_path: string, public data: T, public id?: string) {}
 }
 
+/**
+ * PostgrSQL based configuration store.
+ *
+ * @export
+ * @class PostgreSqlConfigurationStore
+ * @extends {BaseConfigurationStore}
+ */
 export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	private pool!: Pool;
 	private tableName: string = 'config';
@@ -41,7 +69,7 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	 * Initiate PostgrSqlConfigurationStore.
 	 * If the database does not exist, it creates a new one.
 	 * @param {(PostgreSqlConfiguration)} [config] Configuration object or URL or ENV variables
-	 * @returns {Promise<this>}
+	 * @returns {Promise<this>} A promise of this instance of the configuration store.
 	 * @memberof PostgreSqlConfigurationStore
 	 */
 	public async init(config?: PostgreSqlConfiguration): Promise<this> {
@@ -93,13 +121,14 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 			const sqlFirstParam = '$1';
 			const sqlSecondParam = 'CAST($2 AS json)';
 			const configPath = 'config_path';
+			const uniqueKeyName = 'config_un';
 			const sql = format(
 				`INSERT INTO %1$I (%2$s) VALUES %3$s ON CONFLICT ON CONSTRAINT %5$I DO UPDATE SET data = %4$s;`,
 				this.tableName,
 				[configPath, 'data'], // IDs aren't needed for inserts
 				[[sqlFirstParam, sqlSecondParam]], // Generate SQL params - The cast is required as there is no implicit cast from string to JSON
 				sqlSecondParam,
-				'config_un'
+				uniqueKeyName
 			);
 			const sqlParam = [template.config_path, JSON.stringify(template.data)];
 			console.log('setData', 'settingsPath:', settingsPath);
@@ -191,15 +220,45 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	 * @memberof PostgreSqlConfigurationStore
 	 */
 	private async disconnect(client: PoolClient | Client): Promise<void> {
-		if (client && 'release' in client) await client.release();
-		else if (client && 'end' in client) await client.end();
+		if (this.isPoolClient(client)) await client.release();
+		else if (this.isClient(client)) await client.end();
+	}
+
+	/**
+	 * Determines if the client is a regular Client.
+	 *
+	 * For more on Type Guards
+	 * See: https://www.typescriptlang.org/docs/handbook/advanced-types.html#user-defined-type-guards
+	 *
+	 * @private
+	 * @param {(PoolClient | Client)} client Client to check.
+	 * @returns {client is Client} If the client is a Client.
+	 * @memberof PostgreSqlConfigurationStore
+	 */
+	private isClient(client: PoolClient | Client): client is Client {
+		return client && 'end' in client;
+	}
+
+	/**
+	 * Determines if the client is a Pool Client.
+	 *
+	 * For more on Type Guards
+	 * See: https://www.typescriptlang.org/docs/handbook/advanced-types.html#user-defined-type-guards
+	 *
+	 * @private
+	 * @param {(PoolClient | Client)} client Client to check.
+	 * @returns {client is PoolClient} If the client is a Pool Client.
+	 * @memberof PostgreSqlConfigurationStore
+	 */
+	private isPoolClient(client: PoolClient | Client): client is PoolClient {
+		return client && 'release' in client;
 	}
 
 	/**
 	 * Wrap a function in a connection so that it will automatically open and close the connection to the DB.
 	 *
 	 * @private
-	 * @template R Return value of the wrapped function.
+	 * @template R Return type of the wrapped function.
 	 * @param {((client?: PoolClient | Client) => Promise<R>)} func Function to wrap.
 	 * @param {PostgreSqlConfiguration} [config] Connection configuration, if it is different than the class configuration.
 	 * @returns {Promise<R>} The result of the wrapped function.
