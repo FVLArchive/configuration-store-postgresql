@@ -92,7 +92,6 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 				"SELECT * FROM pg_database WHERE datname = '%I';",
 				config.database.toLowerCase()
 			);
-			console.log('init', 'checkDbExistsQuery:', checkDbExistsQuery);
 			const result = await client.query(checkDbExistsQuery);
 			if (result.rowCount === 0) {
 				// No Database exists
@@ -131,9 +130,6 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 				uniqueKeyName
 			);
 			const sqlParam = [template.config_path, JSON.stringify(template.data)];
-			console.log('setData', 'settingsPath:', settingsPath);
-			console.log('setData', 'SQL:', sql);
-			console.log('setData', 'SQLPArams:', sqlParam);
 			await client.query(sql, sqlParam);
 			return value;
 		});
@@ -155,13 +151,9 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 			if (settingsPath) {
 				sql += ' WHERE config_path = $1';
 				sqlParam.push(settingsPath);
-				console.log('settingsPath:', settingsPath);
 			}
 			sql += ' LIMIT 1';
 			sql += ';';
-
-			console.log('getData', 'settingsPath:', settingsPath);
-			console.log('getDate SQL:', sql);
 
 			const queryResult = await client.query(sql, sqlParam);
 
@@ -200,7 +192,6 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 		config?: PostgreSqlConfiguration,
 		usePool: boolean = true
 	): Promise<PoolClient | Client> {
-		console.log('usePool', usePool);
 		const sqlConfig = config || this.config;
 		if (!this.pool && usePool) {
 			this.pool = new Pool(sqlConfig);
@@ -281,11 +272,9 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	 * @memberof PostgreSqlConfigurationStore
 	 */
 	async createDatabase(config?: PostgreSqlConfiguration) {
-		console.log('createDatabase');
-
 		await this.connectionWrapper(async client => {
 			const createDbQuery = format('CREATE DATABASE %I TEMPLATE template0;', this.config.database);
-			console.log('createDatabase', 'createDbQuery:', createDbQuery);
+			console.log('Creating Config Database', 'createDbQuery:', createDbQuery);
 			try {
 				await client.query(createDbQuery);
 			} catch (e) {
@@ -302,11 +291,8 @@ export class PostgreSqlConfigurationStore extends BaseConfigurationStore {
 	 * @memberof PostgresDatabase
 	 */
 	async createTables(config?: PostgreSqlConfiguration) {
-		console.log('createTables');
-
 		await this.connectionWrapper(async client => {
 			const databaseQuery = (await readFile(`${__dirname}/sql/init_config.sql`)).toString();
-			console.log('createTables', 'databaseQuery:', databaseQuery);
 			await client.query(databaseQuery);
 		}, config);
 	}
