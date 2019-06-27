@@ -41,10 +41,11 @@
 	"cSpell.words": [
 		"Initialise",
 		"PostgreSQL",
+		"PostgreSql",
 		"Postgres",
 		"configurationstore",
 		"fvlab",
-		"postgrsql",
-		"PostgrSql"
+		"postgresql",
+		"postgresqlconfigurationstore"
 	]
 }

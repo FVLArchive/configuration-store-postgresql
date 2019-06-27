@@ -1,6 +1,6 @@
 {
-	"name": "@fvlab/postgrsqlconfigurationstore",
-	"version": "1.0.1",
+	"name": "@fvlab/postgresqlconfigurationstore",
+	"version": "1.0.3",
 	"description": "Configuration Store wrapper for PostgreSQL.",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
